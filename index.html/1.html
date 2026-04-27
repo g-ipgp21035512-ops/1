@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pilih, Sebut & Menang!</title>
+    <style>
+        :root {
+            --bg: #f0f2f5;
+            --primary: #4834d4;
+            --success: #2ecc71;
+            --wrong: #ff7675;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { color: var(--primary); margin-bottom: 10px; }
+        .instruction { color: #636e72; margin-bottom: 30px; }
+
+        /* Grid Kotak Ayat */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .ayat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: 500;
+            min-height: 80px;
+        }
+
+        .ayat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+        }
+
+        /* Keadaan semasa dipilih (mendengar) */
+        .ayat-card.listening {
+            background: #fff9db;
+            border-color: #f1c40f;
+            animation: pulse 1.5s infinite;
+        }
+
+        /* Keadaan jika betul */
+        .ayat-card.completed {
+            background: var(--success);
+            color: white;
+            border-color: #27ae60;
+            cursor: default;
+            transform: none;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        #status-float {
+            position: fixed;
+            bottom: 20px;
+            background: var(--primary);
+            color: white;
+            padding: 10px 25px;
+            border-radius: 50px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Baca & Menang 🏆</h1>
+    <p class="instruction">Klik pada mana-mana kotak dan mulakan sebutan anda.</p>
+
+    <div class="grid-container" id="grid">
+        </div>
+
+    <div id="status-float">Mendengar... Sebut sekarang!</div>
+
+    <script>
+        const senarai = [
+            "Nyonya itu sedang menyanyi", "Jangan pegang pisau itu", "Menyahut", 
+            "Masukkan tauge itu ke dalam kuali", "Ali sedang mengayuh basikal sambil menghafal sifir",
+            "Imbau kenangan", "Kalau sudah makan sila simpan bekas anda", 
+            "Amboi rajinnya kamu", "Mengaum", "Syiling", "Aurum", "Jangan berlengah", 
+            "Ungu", "Dunia khayalan", "Syarat", "Menyusur", "di tengah", "Apa khabar kamu"
+        ];
+
+        const grid = document.getElementById('grid');
+        const statusFloat = document.getElementById('status-float');
+        
+        const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+
+        if (Speech) {
+            recognition = new Speech();
+            recognition.lang = 'ms-MY';
+        }
+
+        // Bina kotak untuk setiap ayat
+        senarai.forEach((ayat, index) => {
+            const card = document.createElement('div');
+            card.className = 'ayat-card';
+            card.innerText = ayat;
+            card.id = 'card-' + index;
+            card.onclick = () => mulaMendengar(index, ayat);
+            grid.appendChild(card);
+        });
+
+        function mulaMendengar(index, teksTarget) {
+            const currentCard = document.getElementById('card-' + index);
+            
+            // Jangan buat apa-apa jika sudah selesai
+            if (currentCard.classList.contains('completed')) return;
+
+            // Reset semua card lain yang mungkin tengah 'listening'
+            document.querySelectorAll('.ayat-card').forEach(c => c.classList.remove('listening'));
+            
+            currentCard.classList.add('listening');
+            statusFloat.style.display = 'block';
+
+            recognition.start();
+
+            recognition.onresult = (event) => {
+                const hasil = event.results[0][0].transcript.toLowerCase().replace(/[^\w\s]/g, "");
+                const target = teksTarget.toLowerCase().replace(/[^\w\s]/g, "");
+
+                if (hasil.includes(target) || target.includes(hasil)) {
+                    currentCard.classList.remove('listening');
+                    currentCard.classList.add('completed');
+                    currentCard.innerHTML = "✅ " + teksTarget;
+                    statusFloat.innerText = "Hebat! Sebutan Tepat.";
+                    setTimeout(() => { statusFloat.style.display = 'none'; }, 2000);
+                } else {
+                    currentCard.classList.remove('listening');
+                    statusFloat.innerText = "❌ Salah: '" + hasil + "'. Cuba lagi!";
+                    setTimeout(() => { statusFloat.style.display = 'none'; }, 3000);
+                }
+            };
+
+            recognition.onerror = () => {
+                currentCard.classList.remove('listening');
+                statusFloat.style.display = 'none';
+                alert("Ralat mikrofon. Pastikan anda 'Allow' mikrofon.");
+            };
+        }
+    </script>
+</body>
+</html>
